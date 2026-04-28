@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>DateMate Romance | знакомства в Telegram</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- ШАПКА -->
+        <div class="header">
+            <h1>💕 DateMate Romance</h1>
+            <div class="user-badge" id="userBadge">👤 Загрузка...</div>
+        </div>
+        
+        <!-- ЭКРАН 1: КАРТОЧКИ ДЛЯ ЗНАКОМСТВ -->
+        <div id="cardScreen" class="screen active">
+            <div class="profile-card" id="profileCard">
+                <div class="card-inner">
+                    <div class="photo-placeholder" id="profilePhoto">📷</div>
+                    <h2 id="profileName">Имя Фамилия</h2>
+                    <p class="age" id="profileAge"></p>
+                    <p class="bio" id="profileBio">Загрузка анкет...</p>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="action-btn dislike" id="dislikeBtn">❌</button>
+                <button class="action-btn superlike" id="superlikeBtn">⭐</button>
+                <button class="action-btn like" id="likeBtn">❤️</button>
+            </div>
+            <button class="refresh-btn" id="refreshBtn">🔄 Новая анкета</button>
+        </div>
+        
+        <!-- ЭКРАН 2: МОЯ АНКЕТА -->
+        <div id="myProfileScreen" class="screen">
+            <h2>Моя анкета</h2>
+            <form id="profileForm">
+                <input type="text" id="myName" placeholder="Ваше имя" required>
+                <input type="number" id="myAge" placeholder="Возраст (18-99)" required>
+                <textarea id="myBio" rows="3" placeholder="Расскажите о себе..."></textarea>
+                <button type="submit" class="submit-btn">💾 Сохранить анкету</button>
+            </form>
+            <button class="back-btn" id="backToCardsBtn">← К анкетам</button>
+        </div>
+        
+        <!-- ЭКРАН 3: ЛАЙКИ И МЭТЧИ -->
+        <div id="matchesScreen" class="screen">
+            <h2>✨ Ваши симпатии</h2>
+            <div id="matchesList">Загрузка...</div>
+            <button class="back-btn" id="backFromMatchesBtn">← Назад</button>
+        </div>
+        
+        <!-- НИЖНЕЕ МЕНЮ -->
+        <div class="bottom-menu">
+            <button class="menu-btn" data-screen="cardScreen">💕 Главная</button>
+            <button class="menu-btn" data-screen="myProfileScreen">👤 Моя анкета</button>
+            <button class="menu-btn" data-screen="matchesScreen">💌 Лайки</button>
+        </div>
+    </div>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

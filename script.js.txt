@@ -1,0 +1,221 @@
+// Инициализация Telegram
+const tg = window.Telegram.WebApp;
+tg.expand();
+tg.ready();
+
+// Глобальные переменные
+let currentUser = null;
+let currentProfile = null;
+let profilesDB = [];
+
+// Элементы DOM
+const userBadge = document.getElementById('userBadge');
+const profileName = document.getElementById('profileName');
+const profileAge = document.getElementById('profileAge');
+const profileBio = document.getElementById('profileBio');
+const matchesList = document.getElementById('matchesList');
+
+// ========== 1. ПОЛУЧАЕМ ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ИЗ TELEGRAM ==========
+function initTelegramUser() {
+    const initData = tg.initDataUnsafe;
+    if (initData && initData.user) {
+        const tgUser = initData.user;
+        currentUser = {
+            id: tgUser.id,
+            first_name: tgUser.first_name,
+            last_name: tgUser.last_name || '',
+            username: tgUser.username || '',
+            language_code: tgUser.language_code,
+            age: null,
+            bio: '',
+            photo: tgUser.photo_url || '📷'
+        };
+        userBadge.textContent = `👤 ${currentUser.first_name}`;
+        loadMyProfile();
+    } else {
+        currentUser = {
+            id: 999999,
+            first_name: 'Тестер',
+            last_name: '',
+            username: 'tester',
+            age: 25,
+            bio: 'Люблю программировать и знакомиться!',
+            photo: '🧪'
+        };
+        userBadge.textContent = '🧪 Тестер';
+    }
+    console.log('Пользователь:', currentUser);
+}
+
+// ========== 2. РАБОТА С МОЕЙ АНКЕТОЙ ==========
+function saveMyProfile() {
+    if (currentUser) {
+        localStorage.setItem(`profile_${currentUser.id}`, JSON.stringify({
+            name: currentUser.first_name,
+            age: currentUser.age,
+            bio: currentUser.bio
+        }));
+    }
+}
+
+function loadMyProfile() {
+    const saved = localStorage.getItem(`profile_${currentUser.id}`);
+    if (saved) {
+        const data = JSON.parse(saved);
+        currentUser.age = data.age;
+        currentUser.bio = data.bio;
+        document.getElementById('myName').value = data.name || currentUser.first_name;
+        document.getElementById('myAge').value = data.age || '';
+        document.getElementById('myBio').value = data.bio || '';
+    } else {
+        document.getElementById('myName').value = currentUser.first_name;
+        document.getElementById('myAge').value = '';
+        document.getElementById('myBio').value = '';
+    }
+}
+
+// ========== 3. ЗАГРУЗКА ДРУГИХ АНКЕТ ==========
+function loadProfiles() {
+    const mockProfiles = [
+        { id: 1, name: 'Анна', age: 24, bio: 'Люблю кофе и путешествия', photo: '👩‍🦰' },
+        { id: 2, name: 'Максим', age: 27, bio: 'IT, спорт, вечеринки', photo: '🧔‍♂️' },
+        { id: 3, name: 'Елена', age: 22, bio: 'Рисую, учу испанский', photo: '🎨' },
+        { id: 4, name: 'Дмитрий', age: 30, bio: 'Бизнес, авто, путешествия', photo: '🚗' }
+    ];
+    
+    profilesDB = mockProfiles.filter(p => p.id !== currentUser.id);
+    if (profilesDB.length === 0) {
+        profilesDB = [{ id: 0, name: 'Нет анкет', age: 0, bio: 'Заходите позже!', photo: '😢' }];
+    }
+}
+
+// ========== 4. ПОКАЗАТЬ СЛЕДУЮЩУЮ АНКЕТУ ==========
+function showNextProfile() {
+    if (profilesDB.length === 0) {
+        profileName.textContent = 'Нет анкет';
+        profileAge.textContent = '';
+        profileBio.textContent = 'Попробуйте позже';
+        return;
+    }
+    const randomIndex = Math.floor(Math.random() * profilesDB.length);
+    currentProfile = profilesDB[randomIndex];
+    
+    profileName.textContent = currentProfile.name;
+    profileAge.textContent = `${currentProfile.age} лет`;
+    profileBio.textContent = currentProfile.bio;
+    document.getElementById('profilePhoto').textContent = currentProfile.photo || '📷';
+}
+
+// ========== 5. ЛАЙК / ДИЗЛАЙК ==========
+function likeProfile(isSuper = false) {
+    if (!currentProfile) return;
+    
+    const likeType = isSuper ? '⭐ суперлайк' : '❤️ лайк';
+    
+    let userLikes = JSON.parse(localStorage.getItem(`likes_${currentUser.id}`) || '[]');
+    userLikes.push({ id: currentProfile.id, name: currentProfile.name, time: Date.now(), type: likeType });
+    localStorage.setItem(`likes_${currentUser.id}`, JSON.stringify(userLikes));
+    
+    const otherLikes = JSON.parse(localStorage.getItem(`likes_${currentProfile.id}`) || '[]');
+    const mutual = otherLikes.some(like => like.id === currentUser.id);
+    
+    if (mutual) {
+        tg.showAlert(`💘 Взаимная симпатия с ${currentProfile.name}!`);
+        tg.sendData(JSON.stringify({
+            event: 'match',
+            with_user_id: currentProfile.id,
+            with_user_name: currentProfile.name
+        }));
+        updateMatchesList();
+    } else {
+        tg.showAlert(`✅ Вы поставили ${likeType} пользователю ${currentProfile.name}`);
+    }
+    
+    showNextProfile();
+}
+
+function dislikeProfile() {
+    if (!currentProfile) return;
+    tg.showAlert(`❌ Вы пропустили ${currentProfile.name}`);
+    showNextProfile();
+}
+
+// ========== 6. ОБНОВЛЕНИЕ СПИСКА ЛАЙКОВ ==========
+function updateMatchesList() {
+    const userLikes = JSON.parse(localStorage.getItem(`likes_${currentUser.id}`) || '[]');
+    if (userLikes.length === 0) {
+        matchesList.innerHTML = '<p>😔 Пока нет лайков. Поставьте кому-нибудь ❤️!</p>';
+        return;
+    }
+    
+    let html = '<ul style="list-style: none; padding: 0;">';
+    userLikes.reverse().forEach(like => {
+        html += `<li style="padding: 10px; border-bottom: 1px solid var(--tg-theme-hint-color);">
+                    ${like.type} → ${like.name} 
+                    <span style="font-size: 12px;">(${new Date(like.time).toLocaleTimeString()})</span>
+                </li>`;
+    });
+    html += '</ul>';
+    matchesList.innerHTML = html;
+}
+
+// ========== 7. ПЕРЕКЛЮЧЕНИЕ ЭКРАНОВ ==========
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    document.getElementById(screenId).classList.add('active');
+    
+    if (screenId === 'matchesScreen') {
+        updateMatchesList();
+    } else if (screenId === 'cardScreen' && profilesDB.length) {
+        showNextProfile();
+    }
+}
+
+// ========== 8. ОБРАБОТЧИКИ СОБЫТИЙ ==========
+function bindEvents() {
+    document.getElementById('likeBtn').onclick = () => likeProfile(false);
+    document.getElementById('superlikeBtn').onclick = () => likeProfile(true);
+    document.getElementById('dislikeBtn').onclick = dislikeProfile;
+    document.getElementById('refreshBtn').onclick = showNextProfile;
+    document.getElementById('backToCardsBtn').onclick = () => showScreen('cardScreen');
+    document.getElementById('backFromMatchesBtn').onclick = () => showScreen('cardScreen');
+    
+    document.getElementById('profileForm').onsubmit = (e) => {
+        e.preventDefault();
+        currentUser.age = parseInt(document.getElementById('myAge').value);
+        currentUser.bio = document.getElementById('myBio').value;
+        currentUser.first_name = document.getElementById('myName').value;
+        saveMyProfile();
+        tg.showAlert('Анкета сохранена!');
+        showScreen('cardScreen');
+        loadProfiles();
+        showNextProfile();
+    };
+    
+    document.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.onclick = () => showScreen(btn.dataset.screen);
+    });
+    
+    tg.BackButton.onClick = () => {
+        const active = document.querySelector('.screen.active').id;
+        if (active !== 'cardScreen') {
+            showScreen('cardScreen');
+        } else {
+            tg.close();
+        }
+    };
+    tg.BackButton.show();
+}
+
+// ========== 9. ЗАПУСК ==========
+function init() {
+    initTelegramUser();
+    loadProfiles();
+    bindEvents();
+    showNextProfile();
+    showScreen('cardScreen');
+}
+
+init();
